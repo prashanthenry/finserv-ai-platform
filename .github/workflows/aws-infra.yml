@@ -1,0 +1,44 @@
+name: "AWS Terraform validation \u2014 local state managed on workstation"
+'on':
+  workflow_dispatch: null
+  pull_request:
+    branches:
+    - main
+    paths:
+    - aws/infra/**
+    - aws/scripts/scan-iac.sh
+    - .github/workflows/aws-infra.yml
+  push:
+    branches:
+    - main
+    paths:
+    - aws/infra/**
+    - aws/scripts/scan-iac.sh
+    - .github/workflows/aws-infra.yml
+permissions:
+  contents: read
+defaults:
+  run:
+    working-directory: aws
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.16.1
+    - name: Format and validate configuration without loading state
+      run: |-
+        terraform fmt -check -recursive infra
+        terraform -chdir=infra init -backend=false -input=false -lockfile=readonly
+        terraform -chdir=infra validate
+    - name: IaC security gates
+      run: bash scripts/scan-iac.sh
+      timeout-minutes: 20
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: aws-infra-security
+        path: aws/reports/security/
+        retention-days: 14

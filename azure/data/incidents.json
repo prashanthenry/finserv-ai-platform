@@ -1,0 +1,33 @@
+{
+ "train": [
+  {"text":"payment timeout downstream bank latency high", "label":"timeout"},
+  {"text":"request timeout connection latency dependency slow", "label":"timeout"},
+  {"text":"bank dependency timeout slow response", "label":"timeout"},
+  {"text":"payment response latency exceeded timeout", "label":"timeout"},
+  {"text":"downstream connection timeout latency p95", "label":"timeout"},
+  {"text":"slow bank response request timeout", "label":"timeout"},
+  {"text":"authentication token expired unauthorized", "label":"authentication"},
+  {"text":"unauthorized issuer audience token invalid", "label":"authentication"},
+  {"text":"workload identity authentication denied role", "label":"authentication"},
+  {"text":"access denied token expired credentials", "label":"authentication"},
+  {"text":"authentication error issuer token unauthorized", "label":"authentication"},
+  {"text":"identity role permission access denied", "label":"authentication"},
+  {"text":"cpu throttling capacity overloaded pods", "label":"capacity"},
+  {"text":"memory pressure oomkilled node capacity", "label":"capacity"},
+  {"text":"pending pods quota capacity resources", "label":"capacity"},
+  {"text":"cpu memory exhausted scaling capacity", "label":"capacity"},
+  {"text":"hpa replicas node quota capacity", "label":"capacity"},
+  {"text":"oomkilled memory limits cpu throttling", "label":"capacity"}
+ ],
+ "test": [
+  {"text":"downstream bank timeout observed", "label":"timeout"},
+  {"text":"p95 response latency slow", "label":"timeout"},
+  {"text":"connection request timeout exceeded", "label":"timeout"},
+  {"text":"expired token caused unauthorized requests", "label":"authentication"},
+  {"text":"identity access permission denied", "label":"authentication"},
+  {"text":"issuer audience authentication invalid", "label":"authentication"},
+  {"text":"pods pending because quota exhausted", "label":"capacity"},
+  {"text":"memory limits causing oomkilled", "label":"capacity"},
+  {"text":"node cpu throttling overloaded", "label":"capacity"}
+ ]
+}

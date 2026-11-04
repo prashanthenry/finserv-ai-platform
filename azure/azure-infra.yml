@@ -1,0 +1,47 @@
+name: azure-terraform-validation-$(Date:yyyyMMdd)$(Rev:.r)
+trigger:
+  branches:
+    include:
+    - main
+  paths:
+    include:
+    - azure/infra/**
+    - azure/scripts/scan-iac.sh
+    - azure/azure-infra.yml
+pr:
+  branches:
+    include:
+    - main
+  paths:
+    include:
+    - azure/infra/**
+    - azure/scripts/scan-iac.sh
+    - azure/azure-infra.yml
+pool:
+  vmImage: ubuntu-latest
+jobs:
+- job: Validate
+  steps:
+  - checkout: self
+  - bash: |-
+      set -euo pipefail
+      curl -fsSLo /tmp/terraform.zip https://releases.hashicorp.com/terraform/1.16.1/terraform_1.16.1_linux_amd64.zip
+      unzip -o /tmp/terraform.zip -d /tmp/tfbin
+      echo "##vso[task.prependpath]/tmp/tfbin"
+    displayName: Install Terraform
+  - bash: |-
+      set -euo pipefail
+      terraform fmt -check -recursive infra
+      terraform -chdir=infra init -backend=false -input=false -lockfile=readonly
+      terraform -chdir=infra validate
+    workingDirectory: $(Build.SourcesDirectory)/azure
+    displayName: Validate configuration without loading state
+  - bash: bash scripts/scan-iac.sh
+    workingDirectory: $(Build.SourcesDirectory)/azure
+    displayName: IaC security gates
+    timeoutInMinutes: 20
+  - task: PublishPipelineArtifact@1
+    condition: always()
+    inputs:
+      targetPath: $(Build.SourcesDirectory)/azure/reports/security
+      artifact: azure-infra-security

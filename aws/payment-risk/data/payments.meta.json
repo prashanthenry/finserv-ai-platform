@@ -1,0 +1,8 @@
+{
+  "synthetic": true,
+  "generator_version": 1,
+  "seed": 42,
+  "rows": 6000,
+  "positive_rows": 1000,
+  "sha256": "f11c66bdcadca3665150993836bcf15d41f43e6fd65c518d7ade669498813fc7"
+}

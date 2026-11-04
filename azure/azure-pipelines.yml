@@ -1,0 +1,173 @@
+trigger:
+  branches:
+    include:
+    - main
+  paths:
+    include:
+    - azure/**
+pr:
+  branches:
+    include:
+    - main
+  paths:
+    include:
+    - azure/**
+parameters:
+- name: deployAzure
+  type: boolean
+  default: false
+- name: serviceConnection
+  type: string
+  default: azure-genai-wif
+- name: sonarServiceConnection
+  type: string
+  default: sonarqube-cloud
+pool:
+  vmImage: ubuntu-latest
+variables:
+- group: genai-azure-dev
+stages:
+- stage: Security
+  jobs:
+  - job: IaC
+    steps:
+    - checkout: self
+    - bash: bash scripts/scan-iac.sh
+      workingDirectory: $(Build.SourcesDirectory)/azure
+      displayName: Checkov, tfsec, Trivy IaC and filesystem security
+      timeoutInMinutes: 20
+    - task: PublishPipelineArtifact@1
+      condition: always()
+      inputs:
+        targetPath: $(Build.SourcesDirectory)/azure/reports/security
+        artifact: azure-iac-security
+- stage: Quality
+  jobs:
+  - job: Validate
+    steps:
+    - checkout: self
+      fetchDepth: 0
+    - task: SonarCloudPrepare@4
+      condition: and(succeeded(), ne(variables['System.PullRequest.IsFork'], 'True'))
+      inputs:
+        SonarCloud: ${{ parameters.sonarServiceConnection }}
+        organization: $(SONAR_ORGANIZATION)
+        scannerMode: cli
+        configMode: manual
+        cliProjectKey: $(SONAR_PROJECT_KEY)
+        cliSources: $(Build.SourcesDirectory)/azure/app
+        extraProperties: |-
+          sonar.projectBaseDir=$(Build.SourcesDirectory)/azure
+          sonar.tests=tests
+          sonar.python.version=3.12
+          sonar.python.coverage.reportPaths=reports/coverage.xml
+          sonar.qualitygate.wait=true
+          sonar.qualitygate.timeout=300
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '3.12'
+    - bash: |
+        set -euo pipefail
+        python -m pip install -r requirements-dev.txt
+        bash scripts/quality.sh
+      workingDirectory: $(Build.SourcesDirectory)/azure
+      displayName: Test, security, model and retrieval gates
+    - task: SonarCloudAnalyze@4
+      condition: and(succeeded(), ne(variables['System.PullRequest.IsFork'], 'True'))
+      inputs:
+        jdkversion: JAVA_HOME_21_X64
+    - task: SonarCloudPublish@4
+      condition: and(succeeded(), ne(variables['System.PullRequest.IsFork'], 'True'))
+      inputs:
+        pollingTimeoutSec: '300'
+    - task: HelmInstaller@1
+      inputs:
+        helmVersionToInstall: 3.19.0
+    - bash: |
+        set -euo pipefail
+        helm lint deploy/chart
+        docker build -t copilot:ci .
+        bash scripts/scan-image.sh copilot:ci
+
+        bash scripts/scan-dast.sh copilot:ci
+      workingDirectory: $(Build.SourcesDirectory)/azure
+      timeoutInMinutes: 20
+    - task: PublishTestResults@2
+      condition: succeededOrFailed()
+      inputs:
+        testResultsFormat: JUnit
+        testResultsFiles: $(Build.SourcesDirectory)/azure/reports/tests.xml
+    - task: PublishPipelineArtifact@1
+      condition: succeededOrFailed()
+      inputs:
+        targetPath: $(Build.SourcesDirectory)/azure/reports
+        artifact: azure-quality-evidence
+    - task: PublishPipelineArtifact@1
+      inputs:
+        targetPath: $(Build.SourcesDirectory)/azure/artifacts
+        artifact: azure-model
+  dependsOn: []
+- stage: Release
+  dependsOn:
+  - Quality
+  - Security
+  condition: and(succeeded(), eq('${{ parameters.deployAzure }}', 'True'), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  jobs:
+  - deployment: Deploy
+    environment: azure-dev
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self
+          - download: current
+            artifact: azure-model
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '3.12'
+          - task: HelmInstaller@1
+            inputs:
+              helmVersionToInstall: 3.19.0
+          - task: AzureCLI@2
+            displayName: Build, scan, push and verify real Azure OpenAI inference
+            inputs:
+              azureSubscription: ${{ parameters.serviceConnection }}
+              scriptType: bash
+              workingDirectory: $(Build.SourcesDirectory)/azure
+              scriptLocation: inlineScript
+              inlineScript: |
+                set -euo pipefail
+                mkdir -p artifacts
+                cp "$(Pipeline.Workspace)/azure-model/model.json" artifacts/model.json
+                image_tag="$(Build.SourceVersion)-$(Build.BuildId)-$(System.JobAttempt)"
+                image="${ACR_LOGIN_SERVER}/copilot:${image_tag}"
+                docker build -t "$image" .
+                bash scripts/scan-image.sh "$image"
+                az acr login --name "$ACR_NAME"
+                bash scripts/scan-dast.sh "$image"
+                docker push "$image"
+                az aks install-cli --client-version "$KUBECTL_VERSION" --install-location "$HOME/.local/bin/kubectl" --kubelogin-install-location "$HOME/.local/bin/kubelogin"
+                export PATH="$HOME/.local/bin:$PATH"
+                az aks get-credentials --resource-group "$RESOURCE_GROUP" --name "$AKS_CLUSTER" --overwrite-existing
+                kubelogin convert-kubeconfig -l azurecli
+                bash scripts/deploy-smoke.sh \
+                  --set-string image.repository="${ACR_LOGIN_SERVER}/copilot" --set-string image.tag="$image_tag" \
+                  --set-string serviceAccount.annotations."azure\.workload\.identity/client-id"="$WORKLOAD_CLIENT_ID" \
+                  --set-string podLabels."azure\.workload\.identity/use"=true \
+                  --set-string env.AI_PROVIDER=azure --set-string env.APP_VERSION="$(Build.SourceVersion)" \
+                  --set-string env.AZURE_OPENAI_ENDPOINT="$OPENAI_ENDPOINT" \
+                  --set-string env.AZURE_OPENAI_DEPLOYMENT="$OPENAI_DEPLOYMENT"
+            env:
+              KUBECTL_VERSION: $(KUBECTL_VERSION)
+              ACR_NAME: $(ACR_NAME)
+              ACR_LOGIN_SERVER: $(ACR_LOGIN_SERVER)
+              RESOURCE_GROUP: $(RESOURCE_GROUP)
+              AKS_CLUSTER: $(AKS_CLUSTER)
+              WORKLOAD_CLIENT_ID: $(WORKLOAD_CLIENT_ID)
+              OPENAI_ENDPOINT: $(OPENAI_ENDPOINT)
+              OPENAI_DEPLOYMENT: $(OPENAI_DEPLOYMENT)
+          - task: PublishPipelineArtifact@1
+            condition: always()
+            inputs:
+              targetPath: $(Build.SourcesDirectory)/azure/reports/security
+              artifact: azure-release-security

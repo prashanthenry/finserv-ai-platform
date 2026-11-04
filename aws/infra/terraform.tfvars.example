@@ -1,0 +1,8 @@
+name = "genai-lab"
+region = "us-east-1"
+kubernetes_version = "REPLACE_WITH_SUPPORTED_EKS_VERSION"
+github_oidc_provider_arn = "arn:aws:iam::REPLACE_ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com"
+# Set the exact subject matching this repo's OIDC format and aws-dev environment.
+github_subject = "REPLACE_EXACT_OIDC_SUBJECT"
+bedrock_model_id = "REPLACE_WITH_ACCESSIBLE_SINGLE_REGION_MODEL_ID"
+api_cidrs = ["0.0.0.0/0"]

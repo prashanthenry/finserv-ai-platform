@@ -1,0 +1,12 @@
+subscription_id = "REPLACE"
+name = "genai-lab"
+location = "eastus2"
+acr_name = "REPLACE_GLOBALLY_UNIQUE_ALPHANUMERIC_NAME"
+openai_name = "REPLACE_GLOBALLY_UNIQUE_NAME"
+model_name = "REPLACE_AVAILABLE_CHAT_MODEL"
+model_version = "REPLACE_AVAILABLE_MODEL_VERSION"
+pipeline_object_id = "REPLACE_ADO_SERVICE_PRINCIPAL_OBJECT_ID"
+operator_object_id = "REPLACE_YOUR_ENTRA_OBJECT_ID"
+node_size = "Standard_D2s_v3"
+# Empty = public authenticated API for hosted agents; this is a lab choice.
+api_cidrs = []

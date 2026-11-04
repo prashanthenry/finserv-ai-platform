@@ -1,0 +1,8 @@
+[
+ {"question":"How should we investigate payment API timeout latency?","expected_source":"PAY-001"},
+ {"question":"How do we fix an expired authentication token?","expected_source":"PAY-002"},
+ {"question":"What should we check for CPU throttling and memory pressure?","expected_source":"PAY-003"},
+ {"question":"How do we rollback a failed deployment?","expected_source":"PAY-004"},
+ {"question":"How do we handle duplicate payment idempotency?","expected_source":"PAY-005"},
+ {"question":"Write a banana bread recipe","expected_source":null}
+]

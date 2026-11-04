@@ -1,0 +1,162 @@
+name: AWS application release
+'on':
+  pull_request:
+    branches:
+    - main
+    paths:
+    - aws/**
+    - .github/workflows/aws-app.yml
+  push:
+    branches:
+    - main
+    paths:
+    - aws/**
+    - .github/workflows/aws-app.yml
+  workflow_dispatch: null
+defaults:
+  run:
+    working-directory: aws
+permissions:
+  contents: read
+concurrency:
+  group: aws-copilot-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - run: python -m pip install -r requirements-dev.txt
+    - run: bash scripts/quality.sh
+    - uses: azure/setup-helm@v4
+      with:
+        version: v3.19.0
+    - run: helm lint deploy/chart
+    - run: docker build -t copilot:ci .
+    - run: bash scripts/scan-image.sh copilot:ci
+    - name: OWASP ZAP API DAST on isolated running container
+      run: bash scripts/scan-dast.sh copilot:ci
+      timeout-minutes: 20
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: aws-quality-evidence
+        path: aws/reports/
+        retention-days: 14
+    - uses: actions/upload-artifact@v4
+      with:
+        name: aws-model
+        path: aws/artifacts/model.json
+  release:
+    needs:
+    - quality
+    - iac
+    - sonar
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.DEPLOY_AWS == 'true'
+    runs-on: ubuntu-latest
+    environment: aws-dev
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      EKS_CLUSTER: ${{ vars.EKS_CLUSTER }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+      AWS_POD_ROLE_ARN: ${{ vars.AWS_POD_ROLE_ARN }}
+      BEDROCK_MODEL_ID: ${{ vars.BEDROCK_MODEL_ID }}
+      IMAGE_TAG: ${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - uses: actions/download-artifact@v4
+      with:
+        name: aws-model
+        path: aws/artifacts
+    - uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+        aws-region: ${{ vars.AWS_REGION }}
+    - uses: azure/setup-kubectl@v4
+      with:
+        version: ${{ vars.KUBECTL_VERSION }}
+    - uses: azure/setup-helm@v4
+      with:
+        version: v3.19.0
+    - name: Build and scan the release image
+      run: |+
+        set -euo pipefail
+        image="$ECR_REPOSITORY:$IMAGE_TAG"
+        docker build -t "$image" .
+        bash scripts/scan-image.sh "$image"
+        aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "${ECR_REPOSITORY%%/*}"
+
+    - name: DAST the exact release image before deployment
+      run: bash scripts/scan-dast.sh "$ECR_REPOSITORY:$IMAGE_TAG"
+      timeout-minutes: 20
+    - name: Push the scanned and DAST-tested release image
+      run: docker push "$ECR_REPOSITORY:$IMAGE_TAG"
+    - name: Deploy and verify real Bedrock inference
+      run: |
+        set -euo pipefail
+        aws eks update-kubeconfig --region "$AWS_REGION" --name "$EKS_CLUSTER"
+        bash scripts/deploy-smoke.sh \
+          --set-string image.repository="$ECR_REPOSITORY" --set-string image.tag="$IMAGE_TAG" \
+          --set-string serviceAccount.annotations."eks\.amazonaws\.com/role-arn"="$AWS_POD_ROLE_ARN" \
+          --set-string env.AI_PROVIDER=bedrock --set-string env.APP_VERSION="$GITHUB_SHA" \
+          --set-string env.AWS_REGION="$AWS_REGION" \
+          --set-string env.AWS_STS_REGIONAL_ENDPOINTS=regional \
+          --set-string env.BEDROCK_MODEL_ID="$BEDROCK_MODEL_ID"
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: aws-release-security
+        path: aws/reports/security/
+        retention-days: 14
+  iac:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Checkov, tfsec, Trivy IaC and filesystem security
+      run: bash scripts/scan-iac.sh
+      timeout-minutes: 20
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: aws-iac-security
+        path: aws/reports/security/
+        retention-days: 14
+  sonar:
+    needs: quality
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+      SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+      SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - uses: actions/download-artifact@v4
+      with:
+        name: aws-quality-evidence
+        path: aws/reports
+    - name: Require configured SonarQube Cloud connection
+      run: |-
+        : "${SONAR_TOKEN:?Set SONAR_TOKEN repository secret}"
+        : "${SONAR_ORGANIZATION:?Set SONAR_ORGANIZATION repository variable}"
+        : "${SONAR_PROJECT_KEY:?Set SONAR_PROJECT_KEY repository variable}"
+        : "${SONAR_HOST_URL:?Set the SonarQube Cloud URL from your project setup}"
+    - name: SonarQube Cloud analysis and blocking quality gate
+      uses: SonarSource/sonarqube-scan-action@v8
+      with:
+        projectBaseDir: aws
+        args: -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }} -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}

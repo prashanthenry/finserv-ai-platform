@@ -1,0 +1,26 @@
+[
+  {
+    "platform": "linux/amd64",
+    "scanner": "Trivy 0.76.1",
+    "image": "python:3.12-alpine3.24",
+    "image_id": "sha256:38fd5a425aa93b06d367e2e47e2da6a9bc0cabdaf5788fb1707d143fd1416e97",
+    "repo_digests": [
+      "python@sha256:e6dae589c1c05976188fd3bd019afd091445fc533ed2ea29001beddc7368a9c8"
+    ],
+    "high_critical_counts": {},
+    "report_sha256": "c93221b211697b1ed7e015799281eae8b04d199e7091e1c4f34b0b2ef2e2c1d4",
+    "scope": "Remote base image vulnerability scan only; full application build/scan pending"
+  },
+  {
+    "platform": "linux/arm64",
+    "scanner": "Trivy 0.76.1",
+    "image": "python:3.12-alpine3.24",
+    "image_id": "sha256:d2924abe506373b6f722045c48f98350077cc5b56a50491105c1abb027dce9b2",
+    "repo_digests": [
+      "python@sha256:e6dae589c1c05976188fd3bd019afd091445fc533ed2ea29001beddc7368a9c8"
+    ],
+    "high_critical_counts": {},
+    "report_sha256": "050fab523f6cffff3235e62e62cd64c27cc37295278c9e63f5bb4183b3350a53",
+    "scope": "Remote base image vulnerability scan only; full application build/scan pending"
+  }
+]

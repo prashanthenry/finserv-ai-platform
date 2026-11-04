@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "runtime_base": "dhi.io/python@sha256:76f58066fa95a3ce3b4eb74026b8dda9bfeb3ea14780a211ab634e30bbcbcab7",
+  "platform": "linux/amd64",
+  "vex_file": "dhi-python-vex.json",
+  "vex_sha256": "363f25bdba59cc916e643e8777c2e7f26b51f56b22d1d66eb3d416383a3cdce0",
+  "vendor_author": "Docker Hardened Images <dhi@docker.com>",
+  "signature_evidence": "User ran docker scout vex get with --verify; console confirmed the Docker key, claims and transparency-log checks for attestation artifact sha256:818c83f003c72a98dec82d1b3c5d4dcfd73222d2759f7ccb388d4ea0b15a774f, subject sha256:76f58066fa95a3ce3b4eb74026b8dda9bfeb3ea14780a211ab634e30bbcbcab7. CI checks this reviewed document checksum; it does not repeat online signature verification.",
+  "decisions": {
+    "CVE-2025-69720": {
+      "status": "not_affected",
+      "justifications": [
+        "vulnerable_code_cannot_be_controlled_by_adversary"
+      ],
+      "notes": [
+        "Marked no-dsa by Debian Security Team; see https://security-tracker.debian.org/tracker/CVE-2025-69720"
+      ]
+    },
+    "CVE-2026-113351": {
+      "status": "not_affected",
+      "justifications": [
+        "vulnerable_code_cannot_be_controlled_by_adversary"
+      ],
+      "notes": [
+        "Marked no-dsa by Debian Security Team; see https://security-tracker.debian.org/tracker/CVE-2026-113351"
+      ]
+    },
+    "CVE-2026-117610": {
+      "status": "not_affected",
+      "justifications": [
+        "inline_mitigations_already_exist"
+      ],
+      "notes": [
+        "Mitigated by backporting upstream libexpat PR #1444 (commit 7b0d50e), which handles XML_TOK_NONE on an initial non-final empty external entity subparser parse. See https://security-tracker.debian.org/tracker/CVE-2026-117610."
+      ]
+    },
+    "CVE-2026-118370": {
+      "status": "not_affected",
+      "justifications": [
+        "inline_mitigations_already_exist"
+      ],
+      "notes": [
+        "Mitigated by backporting upstream libexpat PR #1450 (commits 621cb2c and 1bac53c), which migrates storeAtts attIndex and nPrefixes to size_t and rejects overflow before writing int fields. See https://security-tracker.debian.org/tracker/CVE-2026-118370."
+      ]
+    },
+    "CVE-2026-119373": {
+      "status": "not_affected",
+      "justifications": [
+        "inline_mitigations_already_exist",
+        "vulnerable_code_cannot_be_controlled_by_adversary"
+      ],
+      "notes": [
+        "Marked no-dsa by Debian Security Team; see https://security-tracker.debian.org/tracker/CVE-2026-119373",
+        "Upstream fix backported from https://github.com/sqlite/sqlite/commit/e1c9934f9f11a499029abb020ea715a08970da80 onto Debian sqlite3 3.46.1-7+deb13u2 in this DHI rebuild. See https://security-tracker.debian.org/tracker/CVE-2026-119373"
+      ]
+    },
+    "CVE-2026-76642": {
+      "status": "not_affected",
+      "justifications": [
+        "vulnerable_code_cannot_be_controlled_by_adversary"
+      ],
+      "notes": [
+        "Marked no-dsa by Debian Security Team; see https://security-tracker.debian.org/tracker/CVE-2026-76642"
+      ]
+    },
+    "CVE-2026-78408": {
+      "status": "not_affected",
+      "justifications": [
+        "vulnerable_code_cannot_be_controlled_by_adversary"
+      ],
+      "notes": [
+        "Marked no-dsa by Debian Security Team; see https://security-tracker.debian.org/tracker/CVE-2026-78408"
+      ]
+    },
+    "CVE-2026-78409": {
+      "status": "not_affected",
+      "justifications": [
+        "vulnerable_code_cannot_be_controlled_by_adversary"
+      ],
+      "notes": [
+        "Marked no-dsa by Debian Security Team; see https://security-tracker.debian.org/tracker/CVE-2026-78409"
+      ]
+    },
+    "CVE-2026-78410": {
+      "status": "not_affected",
+      "justifications": [
+        "vulnerable_code_cannot_be_controlled_by_adversary"
+      ],
+      "notes": [
+        "Marked no-dsa by Debian Security Team; see https://security-tracker.debian.org/tracker/CVE-2026-78410"
+      ]
+    }
+  }
+}

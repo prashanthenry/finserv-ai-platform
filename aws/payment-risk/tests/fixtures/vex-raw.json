@@ -1,0 +1,196 @@
+{
+  "SchemaVersion": 2,
+  "Trivy": {
+    "Version": "0.76.1"
+  },
+  "ReportID": "01a1a4fc-7607-7747-a047-86ea7cc7a661",
+  "CreatedAt": "2026-11-04T06:16:11.14347861+01:00",
+  "ArtifactName": "vex-integration-test-root",
+  "ArtifactType": "filesystem",
+  "Metadata": {
+    "OS": {
+      "Family": "debian",
+      "Name": "13.7"
+    }
+  },
+  "Results": [
+    {
+      "Target": "vex-integration-test-root (debian 13.7)",
+      "Class": "os-pkgs",
+      "Type": "debian",
+      "Vulnerabilities": [
+        {
+          "VulnerabilityID": "CVE-2026-117610",
+          "PkgID": "libexpat1@2.9.0-1~deb13u1+dhi1",
+          "PkgName": "libexpat1",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libexpat1@2.9.0-1~deb13u1%2Bdhi1?arch=amd64&distro=debian-13.7",
+            "UID": "5ee13e180d3f3b65"
+          },
+          "InstalledVersion": "2.9.0-1~deb13u1+dhi1",
+          "Status": "affected",
+          "SeveritySource": "nvd",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-117610",
+          "Fingerprint": "sha256:33245437e417df1f81ac5a9d1ae2e3fe1ee77a575dae627fbf09efe6db093f1e",
+          "Title": "libexpat through 2.9.0 contains a NULL pointer dereference vulnerabili ...",
+          "Severity": "HIGH"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-118370",
+          "PkgID": "libexpat1@2.9.0-1~deb13u1+dhi1",
+          "PkgName": "libexpat1",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libexpat1@2.9.0-1~deb13u1%2Bdhi1?arch=amd64&distro=debian-13.7",
+            "UID": "5ee13e180d3f3b65"
+          },
+          "InstalledVersion": "2.9.0-1~deb13u1+dhi1",
+          "Status": "affected",
+          "SeveritySource": "nvd",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-118370",
+          "Fingerprint": "sha256:5823be17b832de53882aa65fa6a0aa5ccef18a62f5ce072255d0d7d4af49ff22",
+          "Title": "libexpat through 2.9.0 contains a signed integer overflow vulnerabilit ...",
+          "Severity": "HIGH"
+        },
+        {
+          "VulnerabilityID": "CVE-2025-69720",
+          "PkgID": "libncursesw6@6.5+20250216-2+deb13u0+dhi5",
+          "PkgName": "libncursesw6",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libncursesw6@6.5%2B20250216-2%2Bdeb13u0%2Bdhi5?arch=amd64&distro=debian-13.7",
+            "UID": "50e1849828babbb"
+          },
+          "InstalledVersion": "6.5+20250216-2+deb13u0+dhi5",
+          "Status": "affected",
+          "SeveritySource": "nvd",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2025-69720",
+          "Fingerprint": "sha256:03250219052f491c5b3485f52364507a688728986a46425ccfa47f39c28b8d2c",
+          "Title": "ncurses: ncurses: Buffer overflow vulnerability may lead to arbitrary code execution.",
+          "Severity": "HIGH"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-119373",
+          "PkgID": "libsqlite3-0@3.46.1-7+deb13u2+dhi3",
+          "PkgName": "libsqlite3-0",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libsqlite3-0@3.46.1-7%2Bdeb13u2%2Bdhi3?arch=amd64&distro=debian-13.7",
+            "UID": "1fe79bc7046cf327"
+          },
+          "InstalledVersion": "3.46.1-7+deb13u2+dhi3",
+          "Status": "affected",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-119373",
+          "Fingerprint": "sha256:70199987b4365e6fbf01d58b8f0c9104e92b1238724e5ee57a7893da3d99e476",
+          "Title": "sqlite: sqlite: Denial of service via heap-based buffer overflow in FTS5",
+          "Severity": "HIGH"
+        },
+        {
+          "VulnerabilityID": "CVE-2025-69720",
+          "PkgID": "libtinfo6@6.5+20250216-2+deb13u0+dhi5",
+          "PkgName": "libtinfo6",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libtinfo6@6.5%2B20250216-2%2Bdeb13u0%2Bdhi5?arch=amd64&distro=debian-13.7",
+            "UID": "bf4e602dfbf05239"
+          },
+          "InstalledVersion": "6.5+20250216-2+deb13u0+dhi5",
+          "Status": "affected",
+          "SeveritySource": "nvd",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2025-69720",
+          "Fingerprint": "sha256:69e4f391fc8e06f93b8e5ea9f251007ab05edc958b4a90db03c85bd6c27c5719",
+          "Title": "ncurses: ncurses: Buffer overflow vulnerability may lead to arbitrary code execution.",
+          "Severity": "HIGH"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-76642",
+          "PkgID": "libuuid1@2.41.5-0+deb13u1+dhi3",
+          "PkgName": "libuuid1",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libuuid1@2.41.5-0%2Bdeb13u1%2Bdhi3?arch=amd64&distro=debian-13.7",
+            "UID": "fd575535a16888eb"
+          },
+          "InstalledVersion": "2.41.5-0+deb13u1+dhi3",
+          "Status": "affected",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-76642",
+          "Fingerprint": "sha256:dc311960bb22129ec0997a8168787f0688d474b0cead3334a4474baa7a45266e",
+          "Title": "util-linux: util-linux: failed external mount helper still runs privileged X-mount post-hooks",
+          "Severity": "HIGH"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-78408",
+          "PkgID": "libuuid1@2.41.5-0+deb13u1+dhi3",
+          "PkgName": "libuuid1",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libuuid1@2.41.5-0%2Bdeb13u1%2Bdhi3?arch=amd64&distro=debian-13.7",
+            "UID": "fd575535a16888eb"
+          },
+          "InstalledVersion": "2.41.5-0+deb13u1+dhi3",
+          "Status": "affected",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-78408",
+          "Fingerprint": "sha256:184a06cd647e68527fd923ad03f2f25457130af7cb33fa9db25965c5ac1753ef",
+          "Title": "util-linux: util-linux: nsenter --join-cgroup leaks root cgroup migration authority",
+          "Severity": "HIGH"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-78409",
+          "PkgID": "libuuid1@2.41.5-0+deb13u1+dhi3",
+          "PkgName": "libuuid1",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libuuid1@2.41.5-0%2Bdeb13u1%2Bdhi3?arch=amd64&distro=debian-13.7",
+            "UID": "fd575535a16888eb"
+          },
+          "InstalledVersion": "2.41.5-0+deb13u1+dhi3",
+          "Status": "affected",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-78409",
+          "Fingerprint": "sha256:2305790f18b51b4d52399cd52831a6b14014faae691db533e668bc8daeb9c401",
+          "Title": "util-linux: util-linux: X-mount.subdir detached-tree resolution can escape via intermediate symlinks",
+          "Severity": "HIGH"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-78410",
+          "PkgID": "libuuid1@2.41.5-0+deb13u1+dhi3",
+          "PkgName": "libuuid1",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/libuuid1@2.41.5-0%2Bdeb13u1%2Bdhi3?arch=amd64&distro=debian-13.7",
+            "UID": "fd575535a16888eb"
+          },
+          "InstalledVersion": "2.41.5-0+deb13u1+dhi3",
+          "Status": "affected",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-78410",
+          "Fingerprint": "sha256:715386be1af303c629f22cd8c35b2d5d55046ba927bfed8246bd265ea42f3118",
+          "Title": "util-linux: util-linux: restricted bind mounts do not pin the source, allowing X-mount.owner/group/mode redirection",
+          "Severity": "HIGH"
+        },
+        {
+          "VulnerabilityID": "CVE-2025-69720",
+          "PkgID": "ncurses-base@6.5+20250216-2+deb13u0+dhi5",
+          "PkgName": "ncurses-base",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/ncurses-base@6.5%2B20250216-2%2Bdeb13u0%2Bdhi5?arch=amd64&distro=debian-13.7",
+            "UID": "25dacc6ae8b9480a"
+          },
+          "InstalledVersion": "6.5+20250216-2+deb13u0+dhi5",
+          "Status": "affected",
+          "SeveritySource": "nvd",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2025-69720",
+          "Fingerprint": "sha256:3d382681e9c13e7d5dee827c2c1b78d8e32e7075cf4fc540d7f0a2a288d5c3de",
+          "Title": "ncurses: ncurses: Buffer overflow vulnerability may lead to arbitrary code execution.",
+          "Severity": "HIGH"
+        },
+        {
+          "VulnerabilityID": "CVE-2025-69720",
+          "PkgID": "ncurses-bin@6.5+20250216-2+deb13u0+dhi5",
+          "PkgName": "ncurses-bin",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/debian/ncurses-bin@6.5%2B20250216-2%2Bdeb13u0%2Bdhi5?arch=amd64&distro=debian-13.7",
+            "UID": "3a343b16aa3f8029"
+          },
+          "InstalledVersion": "6.5+20250216-2+deb13u0+dhi5",
+          "Status": "affected",
+          "SeveritySource": "nvd",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2025-69720",
+          "Fingerprint": "sha256:7cf5a0814e42a784920d25922abcec4a02c8861f39a749f311f78b4bc755dee2",
+          "Title": "ncurses: ncurses: Buffer overflow vulnerability may lead to arbitrary code execution.",
+          "Severity": "HIGH"
+        }
+      ]
+    }
+  ]
+}

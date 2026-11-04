@@ -1,0 +1,12 @@
+.git
+.venv
+infra
+docs
+tests
+reports
+__pycache__
+.env
+*.tfstate*
+
+.scannerwork
+.coverage
