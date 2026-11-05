@@ -88,7 +88,14 @@ resource "aws_eks_cluster" "main" {
   name                      = var.name
   role_arn                  = aws_iam_role.cluster.arn
   version                   = var.kubernetes_version
-  enabled_cluster_log_types = ["api", "audit", "authenticator"]
+  #Fixing for CKV_AWS_37
+  enabled_cluster_log_types = [
+  "api",
+  "audit",
+  "authenticator",
+  "controllerManager",
+  "scheduler",
+]
   access_config {
     authentication_mode                         = "API_AND_CONFIG_MAP"
     bootstrap_cluster_creator_admin_permissions = true
