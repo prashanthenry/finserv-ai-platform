@@ -110,7 +110,7 @@ jobs:
   release:
     needs: [quality, iac, sonar]
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.DEPLOY_RISK_AWS == 'true'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, aws-vpc]
     environment: aws-dev
     permissions:
       contents: read

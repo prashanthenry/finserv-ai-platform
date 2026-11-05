@@ -20,7 +20,14 @@ variable "api_cidrs" {
   type = list(string)
 }
 
-data "aws_availability_zones" "available" { state = "available" }
+data "aws_availability_zones" "available" {
+  state = "available"
+
+  filter {
+    name   = "zone-name"
+    values = ["${var.region}a", "${var.region}b"]
+  }
+}
 data "aws_partition" "current" {}
 
 resource "aws_vpc" "main" {
@@ -85,17 +92,25 @@ resource "aws_iam_role_policy_attachment" "cluster" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
 }
 resource "aws_eks_cluster" "main" {
-  name                      = var.name
-  role_arn                  = aws_iam_role.cluster.arn
-  version                   = var.kubernetes_version
-  #Fixing for CKV_AWS_37
+  name     = var.name
+  role_arn = aws_iam_role.cluster.arn
+  version  = var.kubernetes_version
+
   enabled_cluster_log_types = [
-  "api",
-  "audit",
-  "authenticator",
-  "controllerManager",
-  "scheduler",
-]
+    "api",
+    "audit",
+    "authenticator",
+    "controllerManager",
+    "scheduler",
+  ]
+
+  encryption_config {
+    resources = ["secrets"]
+
+    provider {
+      key_arn = aws_kms_key.eks_secrets.arn
+    }
+  }
   access_config {
     authentication_mode                         = "API_AND_CONFIG_MAP"
     bootstrap_cluster_creator_admin_permissions = true
@@ -103,8 +118,8 @@ resource "aws_eks_cluster" "main" {
   vpc_config {
     subnet_ids              = aws_subnet.private[*].id
     endpoint_private_access = true
-    endpoint_public_access  = true
-    public_access_cidrs     = var.api_cidrs
+    endpoint_public_access  = false
+    public_access_cidrs     = []
   }
   depends_on = [aws_iam_role_policy_attachment.cluster]
 }
@@ -170,7 +185,14 @@ resource "aws_iam_role_policy" "bedrock" {
 resource "aws_ecr_repository" "app" {
   name                 = "${var.name}-copilot"
   image_tag_mutability = "IMMUTABLE"
-  image_scanning_configuration { scan_on_push = true }
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  encryption_configuration {
+    encryption_type = "KMS"
+  }
 }
 resource "aws_ecr_lifecycle_policy" "app" {
   repository = aws_ecr_repository.app.name
@@ -179,7 +201,14 @@ resource "aws_ecr_lifecycle_policy" "app" {
 resource "aws_ecr_repository" "payment_risk" {
   name                 = "${var.name}-payment-risk"
   image_tag_mutability = "IMMUTABLE"
-  image_scanning_configuration { scan_on_push = true }
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  encryption_configuration {
+    encryption_type = "KMS"
+  }
 }
 resource "aws_ecr_lifecycle_policy" "payment_risk" {
   repository = aws_ecr_repository.payment_risk.name
