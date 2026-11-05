@@ -1,12 +1,14 @@
 module "platform" {
-  source                   = "./modules/platform"
-  name                     = var.name
-  region                   = var.region
-  kubernetes_version       = var.kubernetes_version
-  github_oidc_provider_arn = var.github_oidc_provider_arn
-  github_subject           = var.github_subject
-  bedrock_model_id         = var.bedrock_model_id
-  api_cidrs                = var.api_cidrs
+  source                      = "./modules/platform"
+  name                        = var.name
+  region                      = var.region
+  kubernetes_version          = var.kubernetes_version
+  github_oidc_provider_arn    = var.github_oidc_provider_arn
+  github_subject              = var.github_subject
+  bedrock_model_id            = var.bedrock_model_id
+  api_cidrs                   = var.api_cidrs
+  enable_github_runner        = var.enable_github_runner
+  github_runner_instance_type = var.github_runner_instance_type
 }
 
 variable "name" {

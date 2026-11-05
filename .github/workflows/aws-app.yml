@@ -12,7 +12,13 @@ name: AWS application release
     paths:
     - aws/**
     - .github/workflows/aws-app.yml
-  workflow_dispatch: null
+  workflow_dispatch:
+    inputs:
+      lab_bypass_checks:
+        description: 'Lab bypass checks: skip tests and scans for this manual run'
+        type: boolean
+        required: false
+        default: false
 defaults:
   run:
     working-directory: aws
@@ -33,15 +39,27 @@ jobs:
         python-version: '3.12'
     - run: python -m pip install -r requirements-dev.txt
     - run: bash scripts/quality.sh
+      if: env.LAB_BYPASS_CHECKS != 'true'
+    - name: Prepare classifier for lab deployment
+      if: env.LAB_BYPASS_CHECKS == 'true'
+      run: |
+        set -euo pipefail
+        mkdir -p reports
+        printf "%s\n" "Lab bypass selected: tests and security scans skipped." >> "$GITHUB_STEP_SUMMARY"
+        python -m scripts.train
+        python -m scripts.evaluate
     - uses: azure/setup-helm@v4
       with:
         version: v3.19.0
     - run: helm lint deploy/chart
+      if: env.LAB_BYPASS_CHECKS != 'true'
     - run: docker build -t copilot:ci .
     - run: bash scripts/scan-image.sh copilot:ci
+      if: env.LAB_BYPASS_CHECKS != 'true'
     - name: OWASP ZAP API DAST on isolated running container
       run: bash scripts/scan-dast.sh copilot:ci
       timeout-minutes: 20
+      if: env.LAB_BYPASS_CHECKS != 'true'
     - uses: actions/upload-artifact@v4
       if: always()
       with:
@@ -57,8 +75,14 @@ jobs:
     - quality
     - iac
     - sonar
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.DEPLOY_AWS == 'true'
-    runs-on: [self-hosted, linux, x64, aws-vpc]
+    if: ${{ !cancelled() && needs.quality.result == 'success' && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+      && inputs.lab_bypass_checks) || (needs.iac.result == 'success' && needs.sonar.result == 'success')) && github.event_name != 'pull_request'
+      && github.ref == 'refs/heads/main' && vars.DEPLOY_AWS == 'true' }}
+    runs-on:
+    - self-hosted
+    - linux
+    - x64
+    - aws-vpc
     environment: aws-dev
     permissions:
       contents: read
@@ -89,18 +113,29 @@ jobs:
     - uses: azure/setup-helm@v4
       with:
         version: v3.19.0
-    - name: Build and scan the release image
+    - uses: docker/setup-buildx-action@v3
+    - name: Verify private EKS deployment access
+      run: |
+        set -euo pipefail
+        : "${AWS_POD_ROLE_ARN:?Set AWS_POD_ROLE_ARN}"
+        : "${BEDROCK_MODEL_ID:?Set BEDROCK_MODEL_ID}"
+        aws eks update-kubeconfig --region "$AWS_REGION" --name "$EKS_CLUSTER"
+        kubectl --request-timeout=15s auth can-i create deployments.apps --namespace genai
+    - name: Build release image and run enabled image scan
       run: |+
         set -euo pipefail
         image="$ECR_REPOSITORY:$IMAGE_TAG"
         docker build -t "$image" .
-        bash scripts/scan-image.sh "$image"
+        if [[ "$LAB_BYPASS_CHECKS" != "true" ]]; then
+          bash scripts/scan-image.sh "$image"
+        fi
         aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "${ECR_REPOSITORY%%/*}"
 
     - name: DAST the exact release image before deployment
       run: bash scripts/scan-dast.sh "$ECR_REPOSITORY:$IMAGE_TAG"
       timeout-minutes: 20
-    - name: Push the scanned and DAST-tested release image
+      if: env.LAB_BYPASS_CHECKS != 'true'
+    - name: Push release image to ECR
       run: docker push "$ECR_REPOSITORY:$IMAGE_TAG"
     - name: Deploy and verify real Bedrock inference
       run: |
@@ -114,7 +149,7 @@ jobs:
           --set-string env.AWS_STS_REGIONAL_ENDPOINTS=regional \
           --set-string env.BEDROCK_MODEL_ID="$BEDROCK_MODEL_ID"
     - uses: actions/upload-artifact@v4
-      if: always()
+      if: always() && env.LAB_BYPASS_CHECKS != 'true'
       with:
         name: aws-release-security
         path: aws/reports/security/
@@ -132,9 +167,11 @@ jobs:
         name: aws-iac-security
         path: aws/reports/security/
         retention-days: 14
+    if: ${{ !(github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.lab_bypass_checks) }}
   sonar:
     needs: quality
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: ${{ !(github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.lab_bypass_checks) && (github.event_name !=
+      'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
     runs-on: ubuntu-latest
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -160,3 +197,5 @@ jobs:
       with:
         projectBaseDir: aws
         args: -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }} -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
+env:
+  LAB_BYPASS_CHECKS: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.lab_bypass_checks }}

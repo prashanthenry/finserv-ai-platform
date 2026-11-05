@@ -1,6 +1,12 @@
 name: "AWS Terraform validation \u2014 local state managed on workstation"
 'on':
-  workflow_dispatch: null
+  workflow_dispatch:
+    inputs:
+      lab_bypass_checks:
+        description: Skip IaC security scans for this manual lab run
+        type: boolean
+        required: false
+        default: false
   pull_request:
     branches:
     - main
@@ -36,8 +42,9 @@ jobs:
     - name: IaC security gates
       run: bash scripts/scan-iac.sh
       timeout-minutes: 20
+      if: ${{ !(github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.lab_bypass_checks) }}
     - uses: actions/upload-artifact@v4
-      if: always()
+      if: ${{ always() && !(github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.lab_bypass_checks) }}
       with:
         name: aws-infra-security
         path: aws/reports/security/

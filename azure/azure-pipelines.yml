@@ -13,6 +13,10 @@ pr:
     include:
     - azure/**
 parameters:
+- name: labBypassChecks
+  displayName: Lab bypass checks (manual main run only)
+  type: boolean
+  default: false
 - name: deployAzure
   type: boolean
   default: false
@@ -41,62 +45,91 @@ stages:
       inputs:
         targetPath: $(Build.SourcesDirectory)/azure/reports/security
         artifact: azure-iac-security
+  condition: and(succeeded(), not(and(eq('${{ parameters.labBypassChecks }}', 'True'), eq(variables['Build.Reason'], 'Manual'), eq(variables['Build.SourceBranch'],
+    'refs/heads/main'))))
 - stage: Quality
   jobs:
   - job: Validate
     steps:
+    - bash: |
+        set -euo pipefail
+        if [[ "${LAB_BYPASS_CHECKS,,}" == "true" ]]; then
+          [[ "$BUILD_REASON" == "Manual" && "$BUILD_SOURCEBRANCH" == "refs/heads/main" ]] || { echo "Lab bypass requires a manual main-branch run."; exit 1; }
+          echo "Lab bypass selected: tests and all security scans skipped; live inference testing retained."
+        fi
+      displayName: Check lab deployment mode
+      env:
+        LAB_BYPASS_CHECKS: ${{ parameters.labBypassChecks }}
     - checkout: self
       fetchDepth: 0
-    - task: SonarCloudPrepare@4
-      condition: and(succeeded(), ne(variables['System.PullRequest.IsFork'], 'True'))
-      inputs:
-        SonarCloud: ${{ parameters.sonarServiceConnection }}
-        organization: $(SONAR_ORGANIZATION)
-        scannerMode: cli
-        configMode: manual
-        cliProjectKey: $(SONAR_PROJECT_KEY)
-        cliSources: $(Build.SourcesDirectory)/azure/app
-        extraProperties: |-
-          sonar.projectBaseDir=$(Build.SourcesDirectory)/azure
-          sonar.tests=tests
-          sonar.python.version=3.12
-          sonar.python.coverage.reportPaths=reports/coverage.xml
-          sonar.qualitygate.wait=true
-          sonar.qualitygate.timeout=300
+    - ${{ if eq(parameters.labBypassChecks, false) }}:
+      - task: SonarCloudPrepare@4
+        condition: and(succeeded(), ne(variables['System.PullRequest.IsFork'], 'True'))
+        inputs:
+          SonarCloud: ${{ parameters.sonarServiceConnection }}
+          organization: $(SONAR_ORGANIZATION)
+          scannerMode: cli
+          configMode: manual
+          cliProjectKey: $(SONAR_PROJECT_KEY)
+          cliSources: $(Build.SourcesDirectory)/azure/app
+          extraProperties: |-
+            sonar.projectBaseDir=$(Build.SourcesDirectory)/azure
+            sonar.tests=tests
+            sonar.python.version=3.12
+            sonar.python.coverage.reportPaths=reports/coverage.xml
+            sonar.qualitygate.wait=true
+            sonar.qualitygate.timeout=300
     - task: UsePythonVersion@0
       inputs:
         versionSpec: '3.12'
     - bash: |
         set -euo pipefail
+        mkdir -p reports
         python -m pip install -r requirements-dev.txt
-        bash scripts/quality.sh
+        if [[ "${LAB_BYPASS_CHECKS,,}" == "true" ]]; then
+          python -m scripts.train
+          python -m scripts.evaluate
+        else
+          bash scripts/quality.sh
+        fi
       workingDirectory: $(Build.SourcesDirectory)/azure
-      displayName: Test, security, model and retrieval gates
-    - task: SonarCloudAnalyze@4
-      condition: and(succeeded(), ne(variables['System.PullRequest.IsFork'], 'True'))
-      inputs:
-        jdkversion: JAVA_HOME_21_X64
-    - task: SonarCloudPublish@4
-      condition: and(succeeded(), ne(variables['System.PullRequest.IsFork'], 'True'))
-      inputs:
-        pollingTimeoutSec: '300'
+      displayName: Prepare model and run selected checks
+      env:
+        LAB_BYPASS_CHECKS: ${{ parameters.labBypassChecks }}
+    - ${{ if eq(parameters.labBypassChecks, false) }}:
+      - task: SonarCloudAnalyze@4
+        condition: and(succeeded(), ne(variables['System.PullRequest.IsFork'], 'True'))
+        inputs:
+          jdkversion: JAVA_HOME_21_X64
+    - ${{ if eq(parameters.labBypassChecks, false) }}:
+      - task: SonarCloudPublish@4
+        condition: and(succeeded(), ne(variables['System.PullRequest.IsFork'], 'True'))
+        inputs:
+          pollingTimeoutSec: '300'
     - task: HelmInstaller@1
       inputs:
         helmVersionToInstall: 3.19.0
     - bash: |
         set -euo pipefail
-        helm lint deploy/chart
+        if [[ "${LAB_BYPASS_CHECKS,,}" != "true" ]]; then
+          helm lint deploy/chart
+        fi
         docker build -t copilot:ci .
-        bash scripts/scan-image.sh copilot:ci
-
-        bash scripts/scan-dast.sh copilot:ci
+        if [[ "${LAB_BYPASS_CHECKS,,}" != "true" ]]; then
+          bash scripts/scan-image.sh copilot:ci
+          bash scripts/scan-dast.sh copilot:ci
+        fi
       workingDirectory: $(Build.SourcesDirectory)/azure
       timeoutInMinutes: 20
-    - task: PublishTestResults@2
-      condition: succeededOrFailed()
-      inputs:
-        testResultsFormat: JUnit
-        testResultsFiles: $(Build.SourcesDirectory)/azure/reports/tests.xml
+      displayName: Build image and run selected checks
+      env:
+        LAB_BYPASS_CHECKS: ${{ parameters.labBypassChecks }}
+    - ${{ if eq(parameters.labBypassChecks, false) }}:
+      - task: PublishTestResults@2
+        condition: succeededOrFailed()
+        inputs:
+          testResultsFormat: JUnit
+          testResultsFiles: $(Build.SourcesDirectory)/azure/reports/tests.xml
     - task: PublishPipelineArtifact@1
       condition: succeededOrFailed()
       inputs:
@@ -111,7 +144,9 @@ stages:
   dependsOn:
   - Quality
   - Security
-  condition: and(succeeded(), eq('${{ parameters.deployAzure }}', 'True'), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  condition: and(not(canceled()), in(dependencies.Quality.result, 'Succeeded', 'SucceededWithIssues'), eq('${{ parameters.deployAzure }}', 'True'),
+    eq(variables['Build.SourceBranch'], 'refs/heads/main'), or(and(eq('${{ parameters.labBypassChecks }}', 'True'), eq(variables['Build.Reason'],
+    'Manual'), eq(variables['Build.SourceBranch'], 'refs/heads/main')), in(dependencies.Security.result, 'Succeeded', 'SucceededWithIssues')))
   jobs:
   - deployment: Deploy
     environment: azure-dev
@@ -129,7 +164,7 @@ stages:
             inputs:
               helmVersionToInstall: 3.19.0
           - task: AzureCLI@2
-            displayName: Build, scan, push and verify real Azure OpenAI inference
+            displayName: Build, push, deploy and test live Azure OpenAI inference
             inputs:
               azureSubscription: ${{ parameters.serviceConnection }}
               scriptType: bash
@@ -142,9 +177,13 @@ stages:
                 image_tag="$(Build.SourceVersion)-$(Build.BuildId)-$(System.JobAttempt)"
                 image="${ACR_LOGIN_SERVER}/copilot:${image_tag}"
                 docker build -t "$image" .
-                bash scripts/scan-image.sh "$image"
+                if [[ "${LAB_BYPASS_CHECKS,,}" != "true" ]]; then
+                  bash scripts/scan-image.sh "$image"
+                fi
                 az acr login --name "$ACR_NAME"
-                bash scripts/scan-dast.sh "$image"
+                if [[ "${LAB_BYPASS_CHECKS,,}" != "true" ]]; then
+                  bash scripts/scan-dast.sh "$image"
+                fi
                 docker push "$image"
                 az aks install-cli --client-version "$KUBECTL_VERSION" --install-location "$HOME/.local/bin/kubectl" --kubelogin-install-location "$HOME/.local/bin/kubelogin"
                 export PATH="$HOME/.local/bin:$PATH"
@@ -166,8 +205,9 @@ stages:
               WORKLOAD_CLIENT_ID: $(WORKLOAD_CLIENT_ID)
               OPENAI_ENDPOINT: $(OPENAI_ENDPOINT)
               OPENAI_DEPLOYMENT: $(OPENAI_DEPLOYMENT)
+              LAB_BYPASS_CHECKS: ${{ parameters.labBypassChecks }}
           - task: PublishPipelineArtifact@1
-            condition: always()
+            condition: and(always(), ne('${{ parameters.labBypassChecks }}', 'True'))
             inputs:
               targetPath: $(Build.SourcesDirectory)/azure/reports/security
               artifact: azure-release-security

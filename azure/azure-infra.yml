@@ -40,8 +40,16 @@ jobs:
     workingDirectory: $(Build.SourcesDirectory)/azure
     displayName: IaC security gates
     timeoutInMinutes: 20
+    condition: and(succeeded(), not(and(eq('${{ parameters.labBypassChecks }}', 'True'), eq(variables['Build.Reason'], 'Manual'), eq(variables['Build.SourceBranch'],
+      'refs/heads/main'))))
   - task: PublishPipelineArtifact@1
-    condition: always()
+    condition: and(always(), not(and(eq('${{ parameters.labBypassChecks }}', 'True'), eq(variables['Build.Reason'], 'Manual'), eq(variables['Build.SourceBranch'],
+      'refs/heads/main'))))
     inputs:
       targetPath: $(Build.SourcesDirectory)/azure/reports/security
       artifact: azure-infra-security
+parameters:
+- name: labBypassChecks
+  displayName: Skip IaC security scans for this manual lab run
+  type: boolean
+  default: false
