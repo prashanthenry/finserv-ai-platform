@@ -34,9 +34,49 @@ def audit(requirements: Path, report: Path):
         raise ValueError(f"Incomplete audit; skipped packages: {skipped}")
 
 
-if __name__ == "__main__":
+def main():
+    root = Path(__file__).resolve().parents[1]
+    lockfiles = {
+        name: root / name
+        for name in (
+            "requirements-linux.txt",
+            "requirements-macos-arm64.txt",
+            "requirements-dev.txt",
+        )
+    }
+    reports = {
+        name: root / name
+        for name in (
+            "reports/dependencies.json",
+            "reports/dependencies-training.json",
+        )
+    }
     parser = argparse.ArgumentParser()
-    parser.add_argument("--requirements", type=Path, default=Path("requirements-linux.txt"))
-    parser.add_argument("--report", type=Path, default=Path("reports/dependencies.json"))
+    parser.add_argument(
+        "--requirements", choices=tuple(lockfiles), default="requirements-linux.txt",
+    )
+    parser.add_argument(
+        "--report", choices=tuple(reports), default="reports/dependencies.json",
+    )
     args = parser.parse_args()
-    audit(args.requirements, args.report)
+
+    try:
+        requirements = lockfiles[args.requirements].resolve(strict=True)
+        report = reports[args.report].resolve()
+        reports_root = (root / "reports").resolve()
+        if requirements.parent != root or not requirements.is_file():
+            parser.error("Requirements must be a regular lockfile inside the project")
+        for candidate in (report, report.with_suffix(".requirements.txt")):
+            path = candidate.resolve()
+            if not path.is_relative_to(reports_root):
+                parser.error("Audit output must stay inside the reports directory")
+            if path.exists() and not path.is_file():
+                parser.error("Audit output must reference a regular file")
+    except (OSError, RuntimeError) as error:
+        parser.error(f"Invalid audit path: {error}")
+
+    audit(requirements, report)
+
+
+if __name__ == "__main__":
+    main()

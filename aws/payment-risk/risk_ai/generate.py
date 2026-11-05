@@ -46,7 +46,24 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, default=ROOT / "data/payments.csv")
     args = parser.parse_args()
-    print(json.dumps(generate(args.output)))
+
+    data_root = (ROOT / "data").resolve()
+    try:
+        output_path = args.output.resolve()
+        metadata_path = output_path.with_suffix(".meta.json").resolve()
+    except (OSError, RuntimeError) as error:
+        parser.error(f"Invalid output path: {error}")
+
+    for path in (output_path, metadata_path):
+        if not path.is_relative_to(data_root):
+            parser.error("--output and its metadata must stay inside the data directory")
+        if path.exists() and not path.is_file():
+            parser.error("--output and its metadata must reference regular files")
+
+    if output_path.suffix.lower() != ".csv":
+        parser.error("--output must have a .csv extension")
+
+    print(json.dumps(generate(output_path)))
 
 
 if __name__ == "__main__":

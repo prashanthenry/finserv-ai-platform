@@ -143,13 +143,42 @@ def train(data: Path, output: Path) -> dict:
     print("MODEL GATES PASSED: " + json.dumps(summary))
     return summary
 
-
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data", type=Path, default=ROOT / "data/payments.csv")
-    parser.add_argument("--output", type=Path, default=ROOT / "artifacts")
+    parser.add_argument(
+        "--data",
+        type=Path,
+        default=ROOT / "data/payments.csv",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=ROOT / "artifacts",
+    )
     args = parser.parse_args()
-    train(args.data, args.output)
+
+    try:
+        data_path = args.data.resolve(strict=True)
+        output_path = args.output.resolve()
+    except (OSError, RuntimeError) as error:
+        parser.error(f"Invalid filesystem path: {error}")
+
+    data_root = (ROOT / "data").resolve()
+    artifacts_root = (ROOT / "artifacts").resolve()
+
+    if not data_path.is_relative_to(data_root):
+        parser.error("--data must stay inside the project's data directory")
+
+    if not data_path.is_file():
+        parser.error("--data must reference an existing file")
+
+    if not output_path.is_relative_to(artifacts_root):
+        parser.error("--output must stay inside the project's artifacts directory")
+
+    if output_path.exists() and not output_path.is_dir():
+        parser.error("--output must reference a directory")
+
+    train(data_path, output_path)
 
 
 if __name__ == "__main__":
