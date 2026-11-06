@@ -4,6 +4,7 @@ import os
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
+from botocore.exceptions import ClientError
 
 from fastapi import FastAPI, HTTPException, Response
 from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
@@ -73,11 +74,27 @@ def ask(body: Question):
     start = time.monotonic()
     try:
         response = generate(question, sources)
-    except Exception as exc:
-        # Log only error class, never provider response bodies or user prompts.
-        log.error('inference_failed error_type=%s', type(exc).__name__)
+        except Exception as exc:
+        if isinstance(exc, ClientError):
+            error = exc.response.get('Error', {})
+            log.error(
+                'inference_failed operation=%s aws_code=%s message=%s',
+                exc.operation_name,
+                error.get('Code'),
+                error.get('Message'),
+            )
+        else:
+            log.error('inference_failed error_type=%s', type(exc).__name__)
+
         REQUESTS.labels('ask', 'error').inc()
-        raise HTTPException(502, 'AI provider request failed; check model access and workload identity') from None
+        raise HTTPException(
+            502, 'AI provider request failed; check model access and workload identity'
+        ) from None
+    # except Exception as exc:
+    #     # Log only error class, never provider response bodies or user prompts.
+    #     log.error('inference_failed error_type=%s', type(exc).__name__)
+    #     REQUESTS.labels('ask', 'error').inc()
+    #     raise HTTPException(502, 'AI provider request failed; check model access and workload identity') from None
     finally:
         LATENCY.observe(time.monotonic() - start)
     REQUESTS.labels('ask', 'success').inc()

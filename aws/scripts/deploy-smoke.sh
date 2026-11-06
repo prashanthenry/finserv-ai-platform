@@ -11,6 +11,8 @@ for attempt in {1..30}; do
   sleep 1
 done
 if ! python -m scripts.smoke --require-live; then
+  kubectl -n genai --request-timeout=15s logs -l app=copilot \
+    --all-containers=true --tail=100 --prefix=true || true
   if [[ -n "$previous_revision" ]]; then
     helm rollback copilot "$previous_revision" -n genai --wait --timeout 10m
   else
