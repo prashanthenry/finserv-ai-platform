@@ -74,7 +74,7 @@ def ask(body: Question):
     start = time.monotonic()
     try:
         response = generate(question, sources)
-        except Exception as exc:
+    except Exception as exc:
         if isinstance(exc, ClientError):
             error = exc.response.get('Error', {})
             log.error(
